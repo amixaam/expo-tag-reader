@@ -1,7 +1,9 @@
-export type ChangeEventPayload = {
-  value: string;
-};
-
-export type ExpoTagReaderViewProps = {
-  name: string;
+export type AudioTags = {
+    title: string;
+    artist: string;
+    album: string;
+    year: string;
+    genre: string;
+    track: string;
+    comment: string;
 };

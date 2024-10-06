@@ -1,26 +1,8 @@
-import { NativeModulesProxy, EventEmitter, Subscription } from 'expo-modules-core';
-
 // Import the native module. On web, it will be resolved to ExpoTagReader.web.ts
 // and on native platforms to ExpoTagReader.ts
-import ExpoTagReaderModule from './ExpoTagReaderModule';
-import ExpoTagReaderView from './ExpoTagReaderView';
-import { ChangeEventPayload, ExpoTagReaderViewProps } from './ExpoTagReader.types';
+import { AudioTags } from "./ExpoTagReader.types";
+import ExpoTagReaderModule from "./ExpoTagReaderModule";
 
-// Get the native constant value.
-export const PI = ExpoTagReaderModule.PI;
-
-export function hello(): string {
-  return ExpoTagReaderModule.hello();
+export function readTags(uri: string): string {
+    return ExpoTagReaderModule.readTags(uri);
 }
-
-export async function setValueAsync(value: string) {
-  return await ExpoTagReaderModule.setValueAsync(value);
-}
-
-const emitter = new EventEmitter(ExpoTagReaderModule ?? NativeModulesProxy.ExpoTagReader);
-
-export function addChangeListener(listener: (event: ChangeEventPayload) => void): Subscription {
-  return emitter.addListener<ChangeEventPayload>('onChange', listener);
-}
-
-export { ExpoTagReaderView, ExpoTagReaderViewProps, ChangeEventPayload };

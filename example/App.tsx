@@ -1,20 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
 
-import * as ExpoTagReader from 'expo-tag-reader';
+import * as ExpoTagReader from "expo-tag-reader";
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>{ExpoTagReader.hello()}</Text>
-    </View>
-  );
+    const tags = ExpoTagReader.readTags("example URI");
+    return (
+        <View style={styles.container}>
+            <Text>{JSON.stringify(tags)}</Text>
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#fff",
+        alignItems: "center",
+        justifyContent: "center",
+    },
 });

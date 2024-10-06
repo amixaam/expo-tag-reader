@@ -1,9 +1,6 @@
 {
-  "platforms": ["ios", "tvos", "android", "web"],
-  "ios": {
-    "modules": ["ExpoTagReaderModule"]
-  },
-  "android": {
-    "modules": ["expo.modules.tagreader.ExpoTagReaderModule"]
-  }
+    "platforms": ["android"],
+    "android": {
+        "modules": ["expo.modules.tagreader.ExpoTagReaderModule"]
+    }
 }
