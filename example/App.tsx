@@ -1,6 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ExpoTagReader from "expo-tag-reader";
-import { AudioTags, AudioFile } from "expo-tag-reader/ExpoTagReaderModule";
+import { AudioTags, AudioFile } from "expo-tag-reader/ExpoTagReader.types";
 import React, { useEffect, useState } from "react";
 import {
     Button,

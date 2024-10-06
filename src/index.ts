@@ -1,4 +1,4 @@
-// index.ts
+import { AudioFile, AudioTags } from "./ExpoTagReader.types";
 import ExpoTagReaderModule from "./ExpoTagReaderModule";
 
 /**
@@ -7,7 +7,7 @@ import ExpoTagReaderModule from "./ExpoTagReaderModule";
  * @param {string} fileUri The URI of the audio file to read tags from.
  * @returns {Promise<AudioTags>} Resolves with an object of type `AudioTags`.
  */
-export function readTags(fileUri: string) {
+export function readTags(fileUri: string): Promise<AudioTags> {
     return ExpoTagReaderModule.readTags(fileUri);
 }
 
@@ -18,6 +18,6 @@ export function readTags(fileUri: string) {
  * @param {string[]} dirPath Paths to other directories that contain audio files.
  * @returns {Promise<AudioFile[]>} Resolves with an array of objects of type `AudioFile`.
  */
-export function readAudioFiles(dirPath?: string[]) {
+export function readAudioFiles(dirPath?: string[]): Promise<AudioFile[]> {
     return ExpoTagReaderModule.readAudioFiles(dirPath);
 }
