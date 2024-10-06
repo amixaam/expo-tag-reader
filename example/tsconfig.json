@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "expo-tag-reader": ["../src/index"],
+      "expo-tag-reader/*": ["../src/*"]
+    }
+  }
+}
