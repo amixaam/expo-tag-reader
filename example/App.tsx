@@ -116,6 +116,7 @@ export default function App() {
                 <Text>Album: {item.tags.album}</Text>
                 <Text>Duration: {FormatMillis(item.duration)}</Text>
                 <Text>Created: {item.creationDate}</Text>
+                <Text>ID: {item.internalId}</Text>
             </View>
         </View>
     );

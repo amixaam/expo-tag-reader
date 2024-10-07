@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 import java.util.stream.Collectors
 import kotlinx.coroutines.*
+import java.security.MessageDigest
 
 class ExpoTagReaderModule : Module() {
     private val dispatcher = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()).asCoroutineDispatcher()
@@ -90,12 +91,20 @@ class ExpoTagReaderModule : Module() {
                 "fileName" to file.name,
                 "duration" to getDuration(uri),
                 "creationDate" to getCreationDate(file),
-                "tags" to tags
+                "tags" to tags,
+                "internalId" to generateInternalId(file)
             )
         } catch (e: Exception) {
             Log.e("ExpoTagReader", "Error processing file ${file.absolutePath}", e)
             null
         }
+    }
+
+    private fun generateInternalId(file: File): String {
+        val input = file.absolutePath + file.lastModified().toString()
+        val md = MessageDigest.getInstance("SHA-256")
+        val hashBytes = md.digest(input.toByteArray())
+        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun readTags(uri: String, disableTags: Map<String, Boolean>?): Map<String, String> {

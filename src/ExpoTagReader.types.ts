@@ -21,7 +21,7 @@ export type DisableAudioTags = {
     track?: boolean;
     comment?: boolean;
     albumArt?: boolean;
-}
+};
 
 export type AudioFile = {
     extension: string;
@@ -30,4 +30,5 @@ export type AudioFile = {
     tags: AudioTags;
     duration: string; // in ms
     creationDate: string; // in "dd-MM-yyyy"
+    internalId: string;
 };
