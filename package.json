@@ -1,7 +1,7 @@
 {
     "name": "expo-tag-reader",
-    "version": "0.1.1",
-    "description": "My new module",
+    "version": "0.2.0",
+    "description": "An Expo Modules that reads metadata from audio files",
     "main": "build/index.js",
     "types": "build/index.d.ts",
     "scripts": {

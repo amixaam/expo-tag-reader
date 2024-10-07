@@ -1,3 +1,5 @@
+import { readAudioFiles } from ".";
+
 export type AudioTags = {
     title: string;
     artist: string;
@@ -8,6 +10,18 @@ export type AudioTags = {
     comment: string;
     albumArt: string; // Base64
 };
+
+// add the ones you don't want
+export type DisableAudioTags = {
+    title?: boolean;
+    artist?: boolean;
+    album?: boolean;
+    year?: boolean;
+    genre?: boolean;
+    track?: boolean;
+    comment?: boolean;
+    albumArt?: boolean;
+}
 
 export type AudioFile = {
     extension: string;
