@@ -62,7 +62,7 @@ try {
 Reads the tags from the audio file at the given URI.
 
 -   `fileUri`: The URI of the audio file to read tags from.
--   `disableTags`: Add any of the `AudioFile` properties to ignore.
+-   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
 -   Returns: A Promise that resolves with an object of type `AudioTags`.
 
 ### `readAudioFiles(dirPath?: string[]): Promise<AudioFile[]>`
@@ -70,9 +70,9 @@ Reads the tags from the audio file at the given URI.
 Reads all audio files from the default and given directory paths. Default directories that are always checked are the `music` directory and the `downloads` directory.
 
 -   `dirPath` (optional): An array of paths to other directories that contain audio files.
--   pageSize: The number of audio files to return per page. Defaults to `10`.
--   pageNumber: The page number to return. Defaults to `1`.
--   `disableTags`: Add any of the `AudioFile` properties to ignore.
+-   `pageSize`: The number of audio files to return per page. Defaults to `10`.
+-   `pageNumber`: The page number to return. Defaults to `1`.
+-   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
 -   Returns: A Promise that resolves with an array of objects of type `AudioFile`.
 
 ## Types
@@ -117,7 +117,5 @@ The module supports reading tags from the following audio file formats:
 -   OPUS
 
 ## Platform Support
-
-This module is currently implemented for Android. i have no way of testing iOS.
 
 This module is currently implemented for Android. i have no way of testing iOS.
