@@ -1,6 +1,6 @@
 {
     "name": "expo-tag-reader",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "My new module",
     "main": "build/index.js",
     "types": "build/index.d.ts",
@@ -24,7 +24,10 @@
         "tag-reader",
         "audio processing"
     ],
-    "repository": "https://github.com/amixaam/expo-tag-reader",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/expo-tag-reader.git"
+    },
     "bugs": {
         "url": "https://github.com/amixaam/expo-tag-reader/issues"
     },
