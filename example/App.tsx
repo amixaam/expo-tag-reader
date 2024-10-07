@@ -54,9 +54,7 @@ export default function App() {
             });
 
             if (!result.canceled) {
-                const fileTags = await ExpoTagReader.readTags(
-                    result.assets[0].uri
-                );
+                const fileTags = ExpoTagReader.readTags(result.assets[0].uri);
                 setTags(fileTags);
             }
         } catch (err) {
@@ -64,23 +62,31 @@ export default function App() {
         }
     };
 
-    const readAudioFiles = async () => {
-        if (!hasPermission) {
-            console.log("Permission not granted");
-            return;
-        }
+    async function loadAllAudioFiles() {
+        const pageSize = 5;
+        let pageNumber = 1;
+        let allAudioFiles: AudioFile[] = [];
+        let currentPage: AudioFile[];
 
-        try {
-            const files = await ExpoTagReader.readAudioFiles(customDirectories);
-            setAudioFiles(files);
-            console.log("Files found:", files.length);
-        } catch (err) {
-            console.error("Failed to find audio files", err);
-            if (err instanceof Error) {
-                console.error("Error message:", err.message);
-            }
-        }
-    };
+        const startTime = Date.now();
+
+        do {
+            currentPage = await ExpoTagReader.readAudioFiles(
+                undefined,
+                pageSize,
+                pageNumber
+            );
+            pageNumber++;
+
+            allAudioFiles = allAudioFiles.concat(currentPage);
+        } while (currentPage.length === pageSize);
+
+        const endTime = Date.now();
+        console.log(
+            `ALBUM ART ON // BATCHES: ${pageSize} // Read ${allAudioFiles.length} audio files in ${endTime - startTime}ms`
+        );
+        setAudioFiles(allAudioFiles);
+    }
 
     const addCustomDirectory = () => {
         if (newDirectory && !customDirectories.includes(newDirectory)) {
@@ -134,7 +140,7 @@ export default function App() {
         <View style={styles.container}>
             <View style={styles.buttonContainer}>
                 <Button title="Pick Audio File" onPress={pickAudioFile} />
-                <Button title="Find Audio Files" onPress={readAudioFiles} />
+                <Button title="Find Audio Files" onPress={loadAllAudioFiles} />
             </View>
             <View style={styles.directoryInputContainer}>
                 <TextInput
