@@ -57,15 +57,15 @@ try {
 
 ## API Reference
 
-### `readTags(fileUri: string): Promise<AudioTags>`
+### `readTags()`
 
 Reads the tags from the audio file at the given URI.
 
 -   `fileUri`: The URI of the audio file to read tags from.
 -   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
--   Returns: A Promise that resolves with an object of type `AudioTags`.
+-   Returns: returns an object of type `AudioTags`.
 
-### `readAudioFiles(dirPath?: string[]): Promise<AudioFile[]>`
+### `readAudioFiles()`
 
 Reads all audio files from the default and given directory paths. Default directories that are always checked are the `music` directory and the `downloads` directory.
 
@@ -73,7 +73,7 @@ Reads all audio files from the default and given directory paths. Default direct
 -   `pageSize`: The number of audio files to return per page. Defaults to `10`.
 -   `pageNumber`: The page number to return. Defaults to `1`.
 -   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
--   Returns: A Promise that resolves with an array of objects of type `AudioFile`.
+-   Returns: A `Promise` that resolves with an array of objects of type `AudioFile`.
 
 ## Types
 
