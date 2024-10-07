@@ -28,9 +28,6 @@
         "type": "git",
         "url": "https://github.com/yourusername/expo-tag-reader.git"
     },
-    "publishConfig": {
-        "@amixaam:registry": "https://npm.pkg.github.com"
-    },
     "bugs": {
         "url": "https://github.com/amixaam/expo-tag-reader/issues"
     },
