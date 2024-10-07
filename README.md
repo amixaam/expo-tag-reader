@@ -1,4 +1,5 @@
 # expo-tag-reader
+[![wakatime](https://wakatime.com/badge/user/b9ae0171-376e-4d7d-9ceb-ea72185e2c2e/project/3cbe9108-00d2-4504-b2db-cee7add20172.svg)](https://wakatime.com/badge/user/b9ae0171-376e-4d7d-9ceb-ea72185e2c2e/project/3cbe9108-00d2-4504-b2db-cee7add20172)
 
 expo-tag-reader is an Android only Expo module that allows you to read audio file tags and metadata from your React Native Expo application. It provides simple functions to read tags from individual audio files or to scan directories for audio files and retrieve their metadata.
 
