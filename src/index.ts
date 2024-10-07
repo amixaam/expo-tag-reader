@@ -6,13 +6,15 @@ import ExpoTagReaderModule from "./ExpoTagReaderModule";
  *
  * @param {string} fileUri The URI of the audio file to read tags from.
  * @param {DisableAudioTags} disableTags Add any of the `AudioFile` properties to ignore.
+ * @param {boolean} cacheImages Whether to cache album art images. Defaults to `true`. if caching is enabled, artwork property of `AudioTags` will be an URI, otherwise it will be Base64
  * @returns {AudioTags} Resolves with an object of type `AudioTags`.
  */
 export function readTags(
     fileUri: string,
-    disableTags?: DisableAudioTags
+    disableTags?: DisableAudioTags,
+    cacheImages: boolean = true
 ): AudioTags {
-    return ExpoTagReaderModule.readTags(fileUri, disableTags);
+    return ExpoTagReaderModule.readTags(fileUri, disableTags, cacheImages);
 }
 
 /**
@@ -25,18 +27,21 @@ export function readTags(
  * @param pageSize The number of audio files to return per page. Defaults to `10`.
  * @param pageNumber The page number to return. Defaults to `1`.
  * @param {DisableAudioTags} disableTags Add any of the `AudioFile` properties to ignore.
+ * @param {boolean} cacheImages Whether to cache album art images. Defaults to `true`. if caching is enabled, artwork property of `AudioTags` will be an URI, otherwise it will be Base64
  * @returns {Promise<AudioFile[]>} Resolves with an array of objects of type `AudioFile`.
  */
 export async function readAudioFiles(
     dirPath?: string[],
     pageSize: number = 10,
     pageNumber: number = 1,
-    disableTags?: DisableAudioTags
+    disableTags?: DisableAudioTags,
+    cacheImages: boolean = true
 ): Promise<AudioFile[]> {
     return await ExpoTagReaderModule.readAudioFiles(
         dirPath,
         disableTags,
         pageSize,
-        pageNumber
+        pageNumber,
+        cacheImages
     );
 }
