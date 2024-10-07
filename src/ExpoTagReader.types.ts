@@ -1,5 +1,6 @@
 import { readAudioFiles } from ".";
 
+// null values will be an empty string
 export type AudioTags = {
     title: string;
     artist: string;
@@ -8,7 +9,7 @@ export type AudioTags = {
     genre: string;
     track: string;
     comment: string;
-    albumArt: string; // Base64
+    albumArt: string; // URI or Base64 (default: URI)
 };
 
 // add the ones you don't want

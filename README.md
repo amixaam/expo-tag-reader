@@ -1,4 +1,5 @@
 # expo-tag-reader
+
 [![wakatime](https://wakatime.com/badge/user/b9ae0171-376e-4d7d-9ceb-ea72185e2c2e/project/3cbe9108-00d2-4504-b2db-cee7add20172.svg)](https://wakatime.com/badge/user/b9ae0171-376e-4d7d-9ceb-ea72185e2c2e/project/3cbe9108-00d2-4504-b2db-cee7add20172)
 
 expo-tag-reader is an Android only Expo module that allows you to read audio file tags and metadata from your React Native Expo application. It provides simple functions to read tags from individual audio files or to scan directories for audio files and retrieve their metadata.
@@ -62,7 +63,8 @@ Reads the tags from the audio file at the given URI.
 
 -   `fileUri`: The URI of the audio file to read tags from.
 -   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
--   Returns: returns an object of type `AudioTags`.
+-   `cacheImages` (optional): Whether to cache album art images. Defaults to `true`. If caching is enabled, the artwork property of `AudioTags` will be a URI, otherwise it will be Base64.
+-   Returns: An object of type `AudioTags`.
 
 ### `readAudioFiles()`
 
@@ -72,6 +74,7 @@ Reads all audio files from the default and given directory paths. Default direct
 -   `pageSize`: The number of audio files to return per page. Defaults to `10`.
 -   `pageNumber`: The page number to return. Defaults to `1`.
 -   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
+-   `cacheImages` (optional): Whether to cache album art images. Defaults to `true`. If caching is enabled, the artwork property of `AudioTags` will be a URI, otherwise it will be Base64.
 -   Returns: A `Promise` that resolves with an array of objects of type `AudioFile`.
 
 ## Types
@@ -87,7 +90,7 @@ type AudioTags = {
     genre: string;
     track: string;
     comment: string;
-    albumArt: string; // Base64 encoded album art
+    albumArt: string; // URI or Base64 (default: URI)
 };
 ```
 
@@ -117,4 +120,10 @@ The module supports reading tags from the following audio file formats:
 
 ## Platform Support
 
-This module is currently implemented for Android. i have no way of testing iOS.
+This module is currently implemented for Android. I have no way of testing iOS.
+
+## Important Note
+
+Remember to ask for read permissions before calling `readAudioFiles()` function.
+
+Caching images is faster than using base64 images on subsequent reads.

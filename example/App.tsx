@@ -54,7 +54,11 @@ export default function App() {
             });
 
             if (!result.canceled) {
-                const fileTags = ExpoTagReader.readTags(result.assets[0].uri);
+                const fileTags = ExpoTagReader.readTags(
+                    result.assets[0].uri,
+                    undefined,
+                    true
+                );
                 setTags(fileTags);
             }
         } catch (err) {
@@ -74,7 +78,9 @@ export default function App() {
             currentPage = await ExpoTagReader.readAudioFiles(
                 undefined,
                 pageSize,
-                pageNumber
+                pageNumber,
+                undefined,
+                true
             );
             pageNumber++;
 
@@ -100,7 +106,9 @@ export default function App() {
             {item.tags.albumArt ? (
                 <Image
                     source={{
-                        uri: `data:image/jpeg;base64,${item.tags.albumArt}`,
+                        uri: item.tags.albumArt.startsWith("file:///")
+                            ? item.tags.albumArt
+                            : `data:${item.tags.albumArt};base64,${item.tags.albumArt}`,
                     }}
                     style={styles.albumArt}
                 />
@@ -110,6 +118,12 @@ export default function App() {
                 </View>
             )}
             <View>
+                <Text>
+                    Artwork:{" "}
+                    {item.tags.albumArt.startsWith("file:///")
+                        ? "URI (cached)"
+                        : "base64"}
+                </Text>
                 <Text>File: {item.fileName}</Text>
                 <Text>Title: {item.tags.title}</Text>
                 <Text>Artist: {item.tags.artist}</Text>
@@ -161,7 +175,9 @@ export default function App() {
                     {tags.albumArt ? (
                         <Image
                             source={{
-                                uri: `data:image/jpeg;base64,${tags.albumArt}`,
+                                uri: tags.albumArt.startsWith("file:///")
+                                    ? tags.albumArt
+                                    : `data:${tags.albumArt};base64,${tags.albumArt}`,
                             }}
                             style={styles.albumArt}
                         />
@@ -170,13 +186,19 @@ export default function App() {
                             <Text>No Album Art</Text>
                         </View>
                     )}
+                    <Text>
+                        Artwork:{" "}
+                        {tags.albumArt.startsWith("file:///")
+                            ? "URI (cached)"
+                            : "base64"}
+                    </Text>
                     <Text>Title: {tags.title}</Text>
                     <Text>Artist: {tags.artist}</Text>
                     <Text>Album: {tags.album}</Text>
-                    <Text>Year: {tags.year}</Text>
                     <Text>Genre: {tags.genre}</Text>
-                    <Text>Track: {tags.track}</Text>
+                    <Text>Year: {tags.year}</Text>
                     <Text>Comment: {tags.comment}</Text>
+                    <Text>Track: {tags.track}</Text>
                 </View>
             )}
             <Text>Audio Files Found: {audioFiles.length}</Text>

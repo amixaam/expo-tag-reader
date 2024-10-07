@@ -23,25 +23,31 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 import java.util.stream.Collectors
 import kotlinx.coroutines.*
+import java.io.FileOutputStream
 import java.security.MessageDigest
 
 class ExpoTagReaderModule : Module() {
-    private val dispatcher = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()).asCoroutineDispatcher()
+    private lateinit var cacheDir: File
+    private val cachedAlbumArts = mutableMapOf<String, String>()
 
     override fun definition() = ModuleDefinition {
         Name("ExpoTagReader")
 
-        Function("readTags") { uri: String, disableTags: Map<String, Boolean>? ->
-            Log.d("ExpoTagReader", "Im here!")
+        OnCreate {
+            cacheDir= File(appContext.cacheDirectory, "album_art").apply { mkdirs() }
+        }
+
+        Function("readTags") { uri: String, disableTags: Map<String, Boolean>?, cacheImages: Boolean ->
+            Log.d("ExpoTagReader", "Reading tags")
 
             try {
-                readTags(uri, disableTags)
+                readTags(uri, disableTags, cacheImages)
             } catch (e: Exception) {
                 throw Exception("Error reading tags: ${e.message}")
             }
         }
 
-        AsyncFunction("readAudioFiles") { dirPaths: List<String>?, disableTags: Map<String, Boolean>?, pageSize: Int, pageNumber: Int, promise: Promise ->
+        AsyncFunction("readAudioFiles") { dirPaths: List<String>?, disableTags: Map<String, Boolean>?, pageSize: Int, pageNumber: Int, cacheImages: Boolean, promise: Promise ->
             try {
                 val directories = getAudioDirectories(dirPaths)
 
@@ -51,12 +57,12 @@ class ExpoTagReaderModule : Module() {
                         emptyList()
                     } else {
                         directory.walkTopDown()
-                            .filter { it.isFile&& it.extension.lowercase() in supportedAudioExtensions }
+                            .filter { it.isFile && it.extension.lowercase() in supportedAudioExtensions }
                             .toList()
                     }
                 }.parallelStream()
                     .skip(pageSize * (pageNumber - 1).toLong())
-                    .map { file: File -> processAudioFile(file, disableTags) }
+                    .map { file: File -> processAudioFile(file, disableTags, cacheImages) }
                     .collect(Collectors.toList())
 
                 Log.d("ExpoTagReader", "Total audio files processed: ${audioFiles.size}")
@@ -80,11 +86,11 @@ class ExpoTagReaderModule : Module() {
         return directories
     }
 
-    private fun processAudioFile(file: File, disableTags: Map<String, Boolean>?): Map<String, Any?>? {
+    private fun processAudioFile(file: File, disableTags: Map<String, Boolean>?, cacheImages: Boolean): Map<String, Any?>? {
         return try {
             Log.d("ExpoTagReader", "Processing audio file: ${file.absolutePath}")
             val uri = Uri.fromFile(file).toString()
-            val tags = readTags(uri, disableTags)
+            val tags = readTags(uri, disableTags, cacheImages)
             mapOf(
                 "extension" to file.extension.lowercase(),
                 "uri" to uri,
@@ -107,29 +113,28 @@ class ExpoTagReaderModule : Module() {
         return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun readTags(uri: String, disableTags: Map<String, Boolean>?): Map<String, String> {
+    private fun readTags(uri: String, disableTags: Map<String, Boolean>?, cacheImages: Boolean): Map<String, String> {
         val parsedUri = Uri.parse(uri)
         val file = File(parsedUri.path!!)
         val extension = file.extension.lowercase()
 
-
         val tags = if (extension != "opus") {
-            readJAudioTaggerTags(file, disableTags)
+            readJAudioTaggerTags(file, disableTags, cacheImages)
         } else {
-            readMediaMetadata(parsedUri, disableTags)
+            readMediaMetadata(parsedUri, disableTags, cacheImages)
         }
 
-        // Add duration and creation date
         tags["duration"] = getDuration(uri)
         tags["creationDate"] = getCreationDate(file)
 
         return tags
     }
 
-    private fun readJAudioTaggerTags(file: File, disableTags: Map<String, Boolean>?): MutableMap<String, String> {
+    private fun readJAudioTaggerTags(file: File, disableTags: Map<String, Boolean>?, cacheImages: Boolean): MutableMap<String, String> {
         val tags = mutableMapOf<String, String>()
 
-        try {val audioFile = AudioFileIO.read(file)
+        try {
+            val audioFile = AudioFileIO.read(file)
             val tag = audioFile.tag
 
             val tagFields = mapOf(
@@ -142,27 +147,31 @@ class ExpoTagReaderModule : Module() {
                 "comment" to FieldKey.COMMENT
             )
 
-            for ((tagName, fieldKey) in tagFields) {tags[tagName] = if (disableTags?.get(tagName) != true) {
-                tag.getFirst(fieldKey) ?: ""
-            } else {
-                ""
-            }
+            for ((tagName, fieldKey) in tagFields) {
+                tags[tagName] = if (disableTags?.get(tagName) != true) {
+                    tag.getFirst(fieldKey) ?: ""
+                } else {
+                    ""
+                }
             }
 
             if (disableTags?.get("albumArt") != true) {
                 tags["albumArt"] = tag.firstArtwork?.let { artwork ->
-                    Base64.encodeToString(artwork.binaryData, Base64.DEFAULT)
+                    if (cacheImages) {
+                        cacheAlbumArt(artwork.binaryData, tags["album"] ?: "", tags["artist"] ?: "")
+                    } else {
+                        Base64.encodeToString(artwork.binaryData, Base64.DEFAULT)
+                    }
                 } ?: ""
             }
         } catch (e: Exception) {
-            // Handle exceptions appropriately, e.g., log or re-throw
             Log.e("readJAudioTaggerTags", "Error reading tags: ${e.message}")
         }
 
         return tags
     }
 
-    private fun readMediaMetadata(uri: Uri, disableTags: Map<String, Boolean>?): MutableMap<String, String> {
+    private fun readMediaMetadata(uri: Uri, disableTags: Map<String, Boolean>?, cacheImages: Boolean): MutableMap<String, String> {
         val metadata = mutableMapOf<String, String>()
 
         try {
@@ -176,7 +185,7 @@ class ExpoTagReaderModule : Module() {
                     "year" to MediaMetadataRetriever.METADATA_KEY_YEAR,
                     "genre" to MediaMetadataRetriever.METADATA_KEY_GENRE,
                     "track" to MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER,
-                    "comment" to null // Special case for comment, as it's not extracted
+                    "comment" to null
                 )
 
                 for ((tagName, metadataKey) in tagsToExtract) {
@@ -184,18 +193,17 @@ class ExpoTagReaderModule : Module() {
                         metadata[tagName] = if (metadataKey != null) {
                             retriever.extractMetadata(metadataKey) ?: ""
                         } else {
-                            "" // For comment, which is set to empty string
+                            ""
                         }
                     }
                 }
 
                 if (disableTags?.get("albumArt") != true) {
                     retriever.embeddedPicture?.let { albumArtBytes ->
-                        BitmapFactory.decodeByteArray(albumArtBytes, 0, albumArtBytes.size).also { bitmap ->
-                            ByteArrayOutputStream().use { outputStream ->
-                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                                metadata["albumArt"] = Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT)
-                            }
+                        metadata["albumArt"] = if (cacheImages) {
+                            cacheAlbumArt(albumArtBytes, metadata["album"] ?: "", metadata["artist"] ?: "")
+                        } else {
+                            Base64.encodeToString(albumArtBytes, Base64.DEFAULT)
                         }
                     } ?: run { metadata["albumArt"] = "" }
                 }
@@ -205,6 +213,21 @@ class ExpoTagReaderModule : Module() {
         }
 
         return metadata
+    }
+
+    private fun cacheAlbumArt(albumArtBytes: ByteArray, album: String, artist: String): String {
+        val albumArtHash = MessageDigest.getInstance("MD5").digest(albumArtBytes).joinToString("") { "%02x".format(it) }
+        val cacheKey = "$artist-$album-$albumArtHash"
+
+        return cachedAlbumArts.getOrPut(cacheKey) {
+            val file = File(cacheDir, "$cacheKey.jpg")
+            if (!file.exists()) {
+                FileOutputStream(file).use { fos ->
+                    fos.write(albumArtBytes)
+                }
+            }
+            Uri.fromFile(file).toString()
+        }
     }
 
     private fun getDuration(uri: String): String {
