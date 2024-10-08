@@ -67,31 +67,35 @@ export default function App() {
     };
 
     async function loadAllAudioFiles() {
-        const pageSize = 5;
+        const pageSize = 10;
         let pageNumber = 1;
         let allAudioFiles: AudioFile[] = [];
         let currentPage: AudioFile[];
 
         const startTime = Date.now();
 
+        console.log(
+            await ExpoTagReader.getRemovedAudioFiles(
+                audioFiles.map((audioFile) => audioFile.internalId)
+            )
+        );
+
         do {
-            currentPage = await ExpoTagReader.readAudioFiles(
-                undefined,
+            currentPage = await ExpoTagReader.readNewAudioFiles(
+                audioFiles.map((audioFile) => audioFile.internalId),
                 pageSize,
-                pageNumber,
-                undefined,
-                true
+                pageNumber
             );
             pageNumber++;
 
             allAudioFiles = allAudioFiles.concat(currentPage);
         } while (currentPage.length === pageSize);
+        setAudioFiles([...audioFiles, ...allAudioFiles]);
 
         const endTime = Date.now();
         console.log(
-            `ALBUM ART ON // BATCHES: ${pageSize} // Read ${allAudioFiles.length} audio files in ${endTime - startTime}ms`
+            `PAGES: ${pageNumber} // BATCHES: ${pageSize} // Read ${allAudioFiles.length} audio files in ${endTime - startTime}ms`
         );
-        setAudioFiles(allAudioFiles);
     }
 
     const addCustomDirectory = () => {

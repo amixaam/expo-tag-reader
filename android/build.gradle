@@ -48,5 +48,5 @@ repositories {
 }
 
 dependencies {
-  implementation 'com.github.goxr3plus:jaudiotagger:2.2.7'
+  implementation 'com.github.Adonai:jaudiotagger:2.3.14'
 }

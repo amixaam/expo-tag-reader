@@ -1,34 +1,30 @@
 package expo.modules.tagreader
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Environment
 import android.util.Base64
 import android.util.Log
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
-import expo.modules.kotlin.Promise
-import expo.modules.kotlin.functions.Coroutine
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.withContext
-import java.util.concurrent.Executors
-import java.util.stream.Collectors
-import kotlinx.coroutines.*
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ExpoTagReaderModule : Module() {
     private lateinit var cacheDir: File
     private val cachedAlbumArts = mutableMapOf<String, String>()
+    private var customDirectories: List<String> = listOf()
 
     override fun definition() = ModuleDefinition {
         Name("ExpoTagReader")
@@ -38,8 +34,6 @@ class ExpoTagReaderModule : Module() {
         }
 
         Function("readTags") { uri: String, disableTags: Map<String, Boolean>?, cacheImages: Boolean ->
-            Log.d("ExpoTagReader", "Reading tags")
-
             try {
                 readTags(uri, disableTags, cacheImages)
             } catch (e: Exception) {
@@ -47,46 +41,127 @@ class ExpoTagReaderModule : Module() {
             }
         }
 
-        AsyncFunction("readAudioFiles") { dirPaths: List<String>?, disableTags: Map<String, Boolean>?, pageSize: Int, pageNumber: Int, cacheImages: Boolean, promise: Promise ->
-            try {
-                val directories = getAudioDirectories(dirPaths)
-
-                val audioFiles = directories.flatMap { directory ->
-                    if (!directory.exists() || !directory.isDirectory) {
-                        Log.w("ExpoTagReader", "Invalid directory path: ${directory.absolutePath}")
-                        emptyList()
-                    } else {
-                        directory.walkTopDown()
-                            .filter { it.isFile && it.extension.lowercase() in supportedAudioExtensions }
-                            .toList()
+        AsyncFunction("readAudioFiles") Coroutine { pageSize: Int, pageNumber: Int, cacheImages: Boolean, disableTags: Map<String, Boolean>? ->
+            val startTime = System.currentTimeMillis()
+            withContext(Dispatchers.Default) {
+                try {
+                    val audioFiles = withContext(Dispatchers.IO) {
+                        val directories = getAudioDirectories()
+                        val files = directories.flatMap { directory ->
+                            if (!directory.exists() || !directory.isDirectory) {
+                                Log.w("ExpoTagReader", "Invalid directory path: ${directory.absolutePath}")
+                                emptyList()
+                            } else {
+                                directory.walkTopDown()
+                                    .filter { it.isFile && it.extension.lowercase() in supportedAudioExtensions }
+                                    .toList()
+                            }
+                        }
+                        files
                     }
-                }.parallelStream()
-                    .skip(pageSize * (pageNumber - 1).toLong())
-                    .map { file: File -> processAudioFile(file, disableTags, cacheImages) }
-                    .collect(Collectors.toList())
 
-                Log.d("ExpoTagReader", "Total audio files processed: ${audioFiles.size}")
+                    val startIndex = (pageNumber - 1) * pageSize
+                    val endIndex = minOf(startIndex + pageSize, audioFiles.size)
+                    val pageFiles = audioFiles.subList(startIndex, endIndex)
 
-                promise.resolve(audioFiles)
+                    pageFiles.map { file ->
+                        async { processAudioFile(file, disableTags, cacheImages) }
+                    }.awaitAll()
 
-            } catch (e: Exception) {
-                Log.e("ExpoTagReader", "Error reading audio files", e)
-                promise.reject("ERR_READ_AUDIO_FILES", e.message, e)
+                } catch (e: Exception) {
+                    Log.e("ExpoTagReader", "Error reading audio files", e)
+                    throw Exception("ERR_READ_AUDIO_FILES", e)
+                } finally {
+                    val endTime = System.currentTimeMillis()
+                    val totalTime = endTime - startTime
+                    Log.d("ExpoTagReader", "Total time to read audio files: $totalTime ms")
+                }
+            }
+        }
+
+        AsyncFunction("setCustomDirectories") Coroutine { dirPaths: List<String> ->
+            customDirectories = dirPaths
+        }
+
+        AsyncFunction("readNewAudioFiles") Coroutine { songIds: List<String>, pageSize: Int, pageNumber: Int, cacheImages: Boolean, disableTags: Map<String, Boolean>? ->
+            withContext(Dispatchers.Default) {
+                try {
+                    val startTime = System.currentTimeMillis()
+                    val allAudioFiles = getAudioFiles()
+                    val newFiles = allAudioFiles.filter { file ->
+                        generateInternalId(file) !in songIds
+                    }
+
+                    val startIndex = (pageNumber - 1) * pageSize
+                    val endIndex = minOf(startIndex + pageSize, newFiles.size)
+                    val pageFiles = newFiles.subList(startIndex, endIndex)
+
+                    val result = pageFiles.map { file ->
+                        async { processAudioFile(file, disableTags, cacheImages) }
+                    }.awaitAll()
+
+                    val endTime = System.currentTimeMillis()
+                    val totalTime = endTime - startTime
+
+                    Log.i("ExpoTagReader", "readNewAudioFiles: Found ${newFiles.size} new files")
+                    Log.i("ExpoTagReader", "readNewAudioFiles: Total time taken: $totalTime ms")
+
+                    result
+                } catch (e: Exception) {
+                    Log.e("ExpoTagReader", "Error reading new audio files", e)
+                    throw Exception("ERR_READ_NEW_AUDIO_FILES", e)
+                }
+            }
+        }
+
+        AsyncFunction("getRemovedAudioFiles") Coroutine { songIds: List<String> ->
+            withContext(Dispatchers.Default) {
+                try {
+                    val startTime = System.currentTimeMillis()
+                    val currentFileIds = getAudioFiles().map { generateInternalId(it) }
+                    val removedIds = songIds.filter { it !in currentFileIds }
+
+                    val endTime = System.currentTimeMillis()
+                    val totalTime = endTime - startTime
+
+                    Log.i("ExpoTagReader", "getRemovedAudioFiles: Found ${removedIds.size} removed files")
+                    Log.i("ExpoTagReader", "getRemovedAudioFiles: Total time taken: $totalTime ms")
+
+                    removedIds
+                } catch (e: Exception) {
+                    Log.e("ExpoTagReader", "Error getting removed audio files", e)
+                    throw Exception("ERR_GET_REMOVED_AUDIO_FILES", e)
+                }
             }
         }
     }
 
     private val supportedAudioExtensions = listOf("mp3", "wav", "ogg", "flac", "m4a", "opus")
 
-    private fun getAudioDirectories(dirPaths: List<String>?): List<File> {
+    private fun getAudioDirectories(): List<File> {
         val directories = mutableListOf<File>()
         directories.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC))
         directories.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
-        dirPaths?.forEach { path -> directories.add(File(path)) }
+        customDirectories.forEach { path -> directories.add(File(path)) }
         return directories
     }
 
-    private fun processAudioFile(file: File, disableTags: Map<String, Boolean>?, cacheImages: Boolean): Map<String, Any?>? {
+    private fun getAudioFiles(): List<File> {
+        return run {
+            val files = getAudioDirectories().flatMap { directory ->
+                if (!directory.exists() || !directory.isDirectory) {
+                    emptyList()
+                } else {
+                    directory.walkTopDown()
+                        .filter { it.isFile && it.extension.lowercase() in supportedAudioExtensions }
+                        .toList()
+                }
+            }
+            files
+        }
+    }
+
+    private fun processAudioFile(file: File, disableTags: Map<String, Boolean>?, cacheImages: Boolean): Map<String, Any?> {
         return try {
             Log.d("ExpoTagReader", "Processing audio file: ${file.absolutePath}")
             val uri = Uri.fromFile(file).toString()
@@ -102,27 +177,15 @@ class ExpoTagReaderModule : Module() {
             )
         } catch (e: Exception) {
             Log.e("ExpoTagReader", "Error processing file ${file.absolutePath}", e)
-            null
+            mapOf("error" to e.message)
         }
-    }
-
-    private fun generateInternalId(file: File): String {
-        val input = file.absolutePath + file.lastModified().toString()
-        val md = MessageDigest.getInstance("SHA-256")
-        val hashBytes = md.digest(input.toByteArray())
-        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun readTags(uri: String, disableTags: Map<String, Boolean>?, cacheImages: Boolean): Map<String, String> {
         val parsedUri = Uri.parse(uri)
         val file = File(parsedUri.path!!)
-        val extension = file.extension.lowercase()
 
-        val tags = if (extension != "opus") {
-            readJAudioTaggerTags(file, disableTags, cacheImages)
-        } else {
-            readMediaMetadata(parsedUri, disableTags, cacheImages)
-        }
+        val tags = readJAudioTaggerTags(file, disableTags, cacheImages)
 
         tags["duration"] = getDuration(uri)
         tags["creationDate"] = getCreationDate(file)
@@ -132,9 +195,11 @@ class ExpoTagReaderModule : Module() {
 
     private fun readJAudioTaggerTags(file: File, disableTags: Map<String, Boolean>?, cacheImages: Boolean): MutableMap<String, String> {
         val tags = mutableMapOf<String, String>()
+        val startTime = System.currentTimeMillis()
 
         try {
-            val audioFile = AudioFileIO.read(file)
+            // Use AudioFileIO.read or AudioFileIO.getDefaultAudioFileIO to handle different file types
+            val audioFile = AudioFileIO.getDefaultAudioFileIO().readFile(file)
             val tag = audioFile.tag
 
             val tagFields = mapOf(
@@ -147,7 +212,7 @@ class ExpoTagReaderModule : Module() {
                 "comment" to FieldKey.COMMENT
             )
 
-            for ((tagName, fieldKey) in tagFields) {
+            for((tagName, fieldKey) in tagFields) {
                 tags[tagName] = if (disableTags?.get(tagName) != true) {
                     tag.getFirst(fieldKey) ?: ""
                 } else {
@@ -166,53 +231,13 @@ class ExpoTagReaderModule : Module() {
             }
         } catch (e: Exception) {
             Log.e("readJAudioTaggerTags", "Error reading tags: ${e.message}")
+        } finally {
+            val endTime = System.currentTimeMillis()
+            val duration = endTime - startTime
+            Log.d("readJAudioTaggerTags", "Time taken: $duration ms")
         }
 
         return tags
-    }
-
-    private fun readMediaMetadata(uri: Uri, disableTags: Map<String, Boolean>?, cacheImages: Boolean): MutableMap<String, String> {
-        val metadata = mutableMapOf<String, String>()
-
-        try {
-            MediaMetadataRetriever().use { retriever ->
-                retriever.setDataSource(appContext.reactContext, uri)
-
-                val tagsToExtract = listOf(
-                    "title" to MediaMetadataRetriever.METADATA_KEY_TITLE,
-                    "artist" to MediaMetadataRetriever.METADATA_KEY_ARTIST,
-                    "album" to MediaMetadataRetriever.METADATA_KEY_ALBUM,
-                    "year" to MediaMetadataRetriever.METADATA_KEY_YEAR,
-                    "genre" to MediaMetadataRetriever.METADATA_KEY_GENRE,
-                    "track" to MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER,
-                    "comment" to null
-                )
-
-                for ((tagName, metadataKey) in tagsToExtract) {
-                    if (disableTags?.get(tagName) != true) {
-                        metadata[tagName] = if (metadataKey != null) {
-                            retriever.extractMetadata(metadataKey) ?: ""
-                        } else {
-                            ""
-                        }
-                    }
-                }
-
-                if (disableTags?.get("albumArt") != true) {
-                    retriever.embeddedPicture?.let { albumArtBytes ->
-                        metadata["albumArt"] = if (cacheImages) {
-                            cacheAlbumArt(albumArtBytes, metadata["album"] ?: "", metadata["artist"] ?: "")
-                        } else {
-                            Base64.encodeToString(albumArtBytes, Base64.DEFAULT)
-                        }
-                    } ?: run { metadata["albumArt"] = "" }
-                }
-            }
-        } catch (e: Exception) {
-            throw Exception("Error reading tags: ${e.message}")
-        }
-
-        return metadata
     }
 
     private fun cacheAlbumArt(albumArtBytes: ByteArray, album: String, artist: String): String {
@@ -247,5 +272,12 @@ class ExpoTagReaderModule : Module() {
         val date = Date(file.lastModified())
         val formatter = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
         return formatter.format(date)
+    }
+
+    private fun generateInternalId(file: File): String {
+        val input = file.absolutePath + file.lastModified().toString()
+        val md = MessageDigest.getInstance("SHA-256")
+        val hashBytes = md.digest(input.toByteArray())
+        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 }

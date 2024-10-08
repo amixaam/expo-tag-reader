@@ -1,5 +1,3 @@
-import { readAudioFiles } from ".";
-
 // null values will be an empty string
 export type AudioTags = {
     title: string;

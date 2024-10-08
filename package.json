@@ -1,6 +1,6 @@
 {
     "name": "expo-tag-reader",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "description": "An Expo Modules that reads metadata from audio files",
     "main": "build/index.js",
     "types": "build/index.d.ts",
@@ -26,7 +26,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourusername/expo-tag-reader.git"
+        "url": "https://github.com/amixaam/expo-tag-reader.git"
     },
     "bugs": {
         "url": "https://github.com/amixaam/expo-tag-reader/issues"

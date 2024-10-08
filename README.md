@@ -17,7 +17,7 @@ bunx expo install expo-tag-reader
 First, import the functions you need from the package:
 
 ```javascript
-import { readTags, readAudioFiles } from "expo-tag-reader";
+import { readTags, readAudioFiles, ... or other functions } from "expo-tag-reader";
 ```
 
 ### Reading tags from a single audio file
@@ -35,19 +35,15 @@ try {
 ### Scanning directories for audio files
 
 ```javascript
-const additionalDirectories = ["/path/to/custom/directory"];
 try {
     // REQUEST READ PERMISSIONS FIRST
     const pageSize = 5;
     let pageNumber = 1;
-    do {
-        currentPage = await readAudioFiles(
-            additionalDirectories,
-            pageSize,
-            pageNumber
-        );
-        pageNumber++;
+    let currentPage;
 
+    do {
+        currentPage = await readAudioFiles(pageSize, pageNumber);
+        pageNumber++;
         console.log(currentPage); // current page files
     } while (currentPage.length === pageSize);
 } catch (error) {
@@ -68,14 +64,38 @@ Reads the tags from the audio file at the given URI.
 
 ### `readAudioFiles()`
 
-Reads all audio files from the default and given directory paths. Default directories that are always checked are the `music` directory and the `downloads` directory.
+Reads all audio files from the `Music` and `Downloads` directory.
 
--   `dirPath` (optional): An array of paths to other directories that contain audio files.
--   `pageSize`: The number of audio files to return per page. Defaults to `10`.
+-   `pageSize` (optional): The number of audio files to return per page. Defaults to `10`.
 -   `pageNumber`: The page number to return. Defaults to `1`.
+-   `cacheImages` (optional): Whether to cache album art images. Defaults to `true`.
 -   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
--   `cacheImages` (optional): Whether to cache album art images. Defaults to `true`. If caching is enabled, the artwork property of `AudioTags` will be a URI, otherwise it will be Base64.
 -   Returns: A `Promise` that resolves with an array of objects of type `AudioFile`.
+
+### `setCustomDirectories()`
+
+Sets the custom directories to read audio files from.
+
+-   `dirPaths`: An array of paths to directories that contain audio files.
+-   Returns: A `Promise` that resolves when the operation is complete.
+
+### `readNewAudioFiles()`
+
+Finds and returns new audio files by comparing IDs.
+
+-   `songIds`: The IDs of the songs to read new files from.
+-   `pageSize` (optional): The number of audio files to return per page. Defaults to `10`.
+-   `pageNumber`: The page number to return. Defaults to `1`.
+-   `cacheImages` (optional): Whether to cache album art images. Defaults to `true`.
+-   `disableTags` (optional): Add any of the `AudioFile` properties to ignore.
+-   Returns: A `Promise` that resolves with an array of objects of type `AudioFile`.
+
+### `getRemovedAudioFiles()`
+
+Finds and returns the removed audio files by comparing IDs.
+
+-   `songIds`: The IDs of the songs to find removed files from.
+-   Returns: A `Promise` that resolves with an array of strings of removed file IDs.
 
 ## Types
 
@@ -104,6 +124,7 @@ type AudioFile = {
     tags: AudioTags;
     duration: string; // in milliseconds
     creationDate: string; // in "dd-MM-yyyy" format
+    internalId: string; // unique identifier for the audio file
 };
 ```
 
@@ -120,10 +141,10 @@ The module supports reading tags from the following audio file formats:
 
 ## Platform Support
 
-This module is currently implemented for Android. I have no way of testing iOS.
+This module is currently implemented for Android only.
 
-## Important Note
+## Important Notes
 
-Remember to ask for read permissions before calling `readAudioFiles()` function.
-
-Caching images is faster than using base64 images on subsequent reads.
+-   Remember to request read permissions before calling any of the audio file reading functions.
+-   Caching images is faster than using base64 images on subsequent reads.
+-   The `internalId` property in the `AudioFile` type is essential for tracking new and removed files.
