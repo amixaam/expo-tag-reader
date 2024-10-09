@@ -1,4 +1,3 @@
-// null values will be an empty string
 export type AudioTags = {
     title: string;
     artist: string;
@@ -8,18 +7,25 @@ export type AudioTags = {
     track: string;
     comment: string;
     albumArt: string; // URI or Base64 (default: URI)
+    sampleRate: string;
+    bitrate: string;
+    channels: string;
+    duration: string; // in ms
 };
 
-// add the ones you don't want
 export type DisableAudioTags = {
-    title?: boolean;
-    artist?: boolean;
-    album?: boolean;
-    year?: boolean;
-    genre?: boolean;
-    track?: boolean;
-    comment?: boolean;
-    albumArt?: boolean;
+    title: boolean;
+    artist: boolean;
+    album: boolean;
+    year: boolean;
+    genre: boolean;
+    track: boolean;
+    comment: boolean;
+    albumArt: boolean; // URI or Base64 (default: URI)
+    sampleRate: boolean;
+    bitrate: boolean;
+    channels: boolean;
+    duration: boolean; // in ms
 };
 
 export type AudioFile = {
@@ -27,7 +33,6 @@ export type AudioFile = {
     uri: string;
     fileName: string;
     tags: AudioTags;
-    duration: string; // in ms
     creationDate: string; // in "dd-MM-yyyy"
     internalId: string;
 };

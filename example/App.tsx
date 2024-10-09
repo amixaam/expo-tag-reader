@@ -14,16 +14,7 @@ import {
 import * as MediaLibrary from "expo-media-library";
 
 export default function App() {
-    const [tags, setTags] = useState<AudioTags>({
-        title: "",
-        artist: "",
-        album: "",
-        year: "",
-        genre: "",
-        track: "",
-        comment: "",
-        albumArt: "",
-    });
+    const [tags, setTags] = useState<AudioTags>({} as AudioTags);
 
     const FormatMillis = (milliseconds: string) => {
         const millisecondsNum = parseInt(milliseconds);
@@ -129,10 +120,20 @@ export default function App() {
                         : "base64"}
                 </Text>
                 <Text>File: {item.fileName}</Text>
+                <Text>
+                    {item.extension};{" "}
+                    {Math.floor(parseInt(item.tags.bitrate) / 1000).toString()}{" "}
+                    kb\s;{" "}
+                    {Math.floor(
+                        parseInt(item.tags.sampleRate) / 1000
+                    ).toString()}{" "}
+                    KHz
+                </Text>
+                <Text>channels: {item.tags.channels}</Text>
                 <Text>Title: {item.tags.title}</Text>
                 <Text>Artist: {item.tags.artist}</Text>
                 <Text>Album: {item.tags.album}</Text>
-                <Text>Duration: {FormatMillis(item.duration)}</Text>
+                <Text>Duration: {FormatMillis(item.tags.duration)}</Text>
                 <Text>Created: {item.creationDate}</Text>
                 <Text>ID: {item.internalId}</Text>
             </View>

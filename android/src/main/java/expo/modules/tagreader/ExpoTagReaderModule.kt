@@ -2,6 +2,7 @@ package expo.modules.tagreader
 
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.util.Base64
 import android.util.Log
@@ -136,7 +137,7 @@ class ExpoTagReaderModule : Module() {
         }
     }
 
-    private val supportedAudioExtensions = listOf("mp3", "wav", "ogg", "flac", "m4a", "opus")
+    private val supportedAudioExtensions = listOf("mp3", "wav", "ogg", "flac", "m4a", "opus", "aif", "dsf", "wma")
 
     private fun getAudioDirectories(): List<File> {
         val directories = mutableListOf<File>()
@@ -170,7 +171,6 @@ class ExpoTagReaderModule : Module() {
                 "extension" to file.extension.lowercase(),
                 "uri" to uri,
                 "fileName" to file.name,
-                "duration" to getDuration(uri),
                 "creationDate" to getCreationDate(file),
                 "tags" to tags,
                 "internalId" to generateInternalId(file)
@@ -187,7 +187,29 @@ class ExpoTagReaderModule : Module() {
 
         val tags = readJAudioTaggerTags(file, disableTags, cacheImages)
 
-        tags["duration"] = getDuration(uri)
+        // Use MediaMetadataRetriever for bitrate and duration
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(appContext.reactContext, parsedUri)
+
+            if (disableTags?.get("bitrate") != true) {
+                tags["bitrate"] = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE) ?: ""
+            }
+
+            if (disableTags?.get("sampleRate") != true) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    tags["sampleRate"] = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE) ?: ""
+                }
+                // If sampleRate is not set (i.e., API < 30), it will remain as set by JAudiotagger
+            }
+
+            tags["duration"] = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) ?: ""
+        } catch (e: Exception) {
+            Log.e("readTags", "Error reading tags with MediaMetadataRetriever: ${e.message}")
+        } finally {
+            retriever.release()
+        }
+
         tags["creationDate"] = getCreationDate(file)
 
         return tags
@@ -198,9 +220,9 @@ class ExpoTagReaderModule : Module() {
         val startTime = System.currentTimeMillis()
 
         try {
-            // Use AudioFileIO.read or AudioFileIO.getDefaultAudioFileIO to handle different file types
             val audioFile = AudioFileIO.getDefaultAudioFileIO().readFile(file)
             val tag = audioFile.tag
+            val header = audioFile.audioHeader
 
             val tagFields = mapOf(
                 "title" to FieldKey.TITLE,
@@ -209,7 +231,7 @@ class ExpoTagReaderModule : Module() {
                 "year" to FieldKey.YEAR,
                 "genre" to FieldKey.GENRE,
                 "track" to FieldKey.TRACK,
-                "comment" to FieldKey.COMMENT
+                "comment" to FieldKey.COMMENT,
             )
 
             for((tagName, fieldKey) in tagFields) {
@@ -229,6 +251,16 @@ class ExpoTagReaderModule : Module() {
                     }
                 } ?: ""
             }
+
+            // Use JAudiotagger for sample rate only if API level < 30
+            if (disableTags?.get("sampleRate") != true && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                tags["sampleRate"] = header.sampleRate.toString() ?: ""
+            }
+
+            if (disableTags?.get("channels") != true) {
+                tags["channels"] = header.channels.toUInt().toString() ?: ""
+            }
+
         } catch (e: Exception) {
             Log.e("readJAudioTaggerTags", "Error reading tags: ${e.message}")
         } finally {
@@ -239,6 +271,7 @@ class ExpoTagReaderModule : Module() {
 
         return tags
     }
+
 
     private fun cacheAlbumArt(albumArtBytes: ByteArray, album: String, artist: String): String {
         val albumArtHash = MessageDigest.getInstance("MD5").digest(albumArtBytes).joinToString("") { "%02x".format(it) }
@@ -252,19 +285,6 @@ class ExpoTagReaderModule : Module() {
                 }
             }
             Uri.fromFile(file).toString()
-        }
-    }
-
-    private fun getDuration(uri: String): String {
-        val retriever = MediaMetadataRetriever()
-        try {
-            retriever.setDataSource(appContext.reactContext, Uri.parse(uri))
-            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0
-            return durationMs.toString()
-        } catch (e: Exception) {
-            return "0"
-        } finally {
-            retriever.release()
         }
     }
 
