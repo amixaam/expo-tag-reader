@@ -111,6 +111,10 @@ type AudioTags = {
     track: string;
     comment: string;
     albumArt: string; // URI or Base64 (default: URI)
+    sampleRate: string;
+    bitrate: string;
+    channels: string;
+    duration: string; // in ms
 };
 ```
 
@@ -122,8 +126,7 @@ type AudioFile = {
     uri: string;
     fileName: string;
     tags: AudioTags;
-    duration: string; // in milliseconds
-    creationDate: string; // in "dd-MM-yyyy" format
+    creationDate: string; // in "dd-MM-yyyy"
     internalId: string; // unique identifier for the audio file
 };
 ```
@@ -138,6 +141,9 @@ The module supports reading tags from the following audio file formats:
 -   FLAC
 -   M4A
 -   OPUS
+-   AIF
+-   DSF
+-   WMA
 
 ## Platform Support
 
